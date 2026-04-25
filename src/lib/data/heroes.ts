@@ -43,7 +43,7 @@ export const HEROES: HeroDefinition[] = [
     rarity: "common",
     description: "Un joven estudiante con mucho entusiasmo.",
     baseDps: 1,
-    unlockCost: 50,
+    unlockCost: 30,
     levelCost: 10,
   },
   {
@@ -53,7 +53,7 @@ export const HEROES: HeroDefinition[] = [
     rarity: "common",
     description: "Experta en pociones y magia natural.",
     baseDps: 2,
-    unlockCost: 150,
+    unlockCost: 80,
     levelCost: 25,
   },
   {

@@ -10,7 +10,7 @@ export function bossHp(zone: number): number {
 }
 
 export function goldPerKill(zone: number, goldMultiplier = 1): number {
-  return Math.max(1, Math.floor(enemyHp(zone) * 0.05 * goldMultiplier));
+  return Math.max(8, Math.floor(enemyHp(zone) * 0.2 * goldMultiplier));
 }
 
 // === Click damage ===

@@ -4,6 +4,7 @@ import {
   enemyHp,
   goldPerKill,
   clickDamage,
+  clickUpgradeCost,
   ENEMIES_PER_ZONE,
 } from "@/lib/game/formulas";
 import { loadGame } from "./persistence";
@@ -49,6 +50,7 @@ const DEFAULT_STATE: GameState = {
 
 type GameStore = GameState & {
   clickEnemy: () => number; // returns damage dealt (for floating numbers)
+  buyClickUpgrade: () => void;
   loadSave: () => void;
   _spawnEnemy: (zone: number) => void;
 };
@@ -120,5 +122,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     return damage;
+  },
+
+  buyClickUpgrade: () => {
+    const state = get();
+    const currentLevel = state.upgrades.clickDamage;
+    const cost = clickUpgradeCost(currentLevel);
+    if (state.gold < cost) return;
+    set({
+      gold: state.gold - cost,
+      upgrades: { ...state.upgrades, clickDamage: currentLevel + 1 },
+    });
   },
 }));

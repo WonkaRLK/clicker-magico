@@ -17,12 +17,12 @@ export function Arena() {
         background: `linear-gradient(135deg, ${zone.colorFrom} 0%, ${zone.colorTo} 100%)`,
       }}
     >
-      {/* Left panel — upgrades */}
+      {/* Left panel — heroes */}
       <div className="w-64 shrink-0 flex flex-col gap-2 p-3 bg-black/20 overflow-y-auto">
         <p className="text-white/40 text-xs font-semibold uppercase tracking-widest px-1 pt-1">
-          Mejoras
+          Héroes
         </p>
-        <UpgradeShop />
+        <HeroPanel />
       </div>
 
       {/* Center — enemy */}
@@ -30,12 +30,12 @@ export function Arena() {
         <Enemy />
       </div>
 
-      {/* Right panel — heroes */}
+      {/* Right panel — upgrades */}
       <div className="w-64 shrink-0 flex flex-col gap-2 p-3 bg-black/20 overflow-y-auto">
         <p className="text-white/40 text-xs font-semibold uppercase tracking-widest px-1 pt-1">
-          Héroes
+          Mejoras
         </p>
-        <HeroPanel />
+        <UpgradeShop />
       </div>
     </div>
   );

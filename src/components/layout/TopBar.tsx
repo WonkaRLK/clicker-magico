@@ -3,6 +3,28 @@
 import { useGameStore } from "@/lib/store/gameStore";
 import { clickDamage } from "@/lib/game/formulas";
 
+function StatPill({
+  icon,
+  label,
+  value,
+  color,
+}: {
+  icon: string;
+  label: string;
+  value: string | number;
+  color: string;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="text-white/40 text-[10px] uppercase tracking-widest">{label}</span>
+      <div className="flex items-center gap-1.5">
+        <span className="text-base">{icon}</span>
+        <span className={`font-bold text-lg tabular-nums ${color}`}>{value}</span>
+      </div>
+    </div>
+  );
+}
+
 export function TopBar() {
   const gold = useGameStore((s) => s.gold);
   const gems = useGameStore((s) => s.gems);
@@ -17,23 +39,22 @@ export function TopBar() {
       : Math.floor(gold).toString();
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-8 border-b border-white/10" style={{ background: "linear-gradient(90deg, #1a0533 0%, #0d1f3c 40%, #1a0533 100%)" }}>
-      <div className="flex items-center gap-1.5">
-        <span className="text-yellow-400 text-lg">🪙</span>
-        <span className="text-yellow-300 font-bold text-sm tabular-nums">
-          {goldDisplay}
-        </span>
+    <div
+      className="flex items-center justify-between px-8 py-8 shrink-0"
+      style={{ background: "linear-gradient(90deg, #1a0533 0%, #0d1f3c 40%, #1a0533 100%)" }}
+    >
+      <StatPill icon="🪙" label="Oro" value={goldDisplay} color="text-yellow-300" />
+
+      {/* Center — click damage, more prominent */}
+      <div className="flex flex-col items-center gap-1">
+        <span className="text-white/30 text-[10px] uppercase tracking-widest">Daño por Click</span>
+        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10">
+          <span className="text-base">⚔️</span>
+          <span className="text-orange-300 font-bold text-2xl tabular-nums leading-none">{dmg}</span>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3 text-sm">
-        <span className="text-white/40 text-xs">DMG por click</span>
-        <span className="text-orange-300 font-bold tabular-nums">{dmg}</span>
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        <span className="text-cyan-400 text-lg">💎</span>
-        <span className="text-cyan-300 font-bold text-sm tabular-nums">{gems}</span>
-      </div>
+      <StatPill icon="💎" label="Gemas" value={gems} color="text-cyan-300" />
     </div>
   );
 }

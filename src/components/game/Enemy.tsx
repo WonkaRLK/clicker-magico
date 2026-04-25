@@ -68,6 +68,14 @@ export function Enemy() {
 
   return (
     <div className="flex flex-col items-center gap-4 w-full max-w-xs mx-auto">
+      {/* Zone + arena label */}
+      <div className="flex flex-col items-center gap-0.5">
+        <span className="text-white/80 text-sm font-semibold">
+          {zone.emoji} {zone.name}
+        </span>
+        <span className="text-white/40 text-xs">Arena {currentZone}</span>
+      </div>
+
       {/* HP bar */}
       <div className="w-full">
         <div className="flex justify-between text-xs text-white/60 mb-1 px-1">

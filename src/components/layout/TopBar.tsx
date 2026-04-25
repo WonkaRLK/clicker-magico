@@ -1,12 +1,13 @@
 "use client";
 
 import { useGameStore } from "@/lib/store/gameStore";
-import { getZoneForArena } from "@/lib/data/zones";
+import { clickDamage } from "@/lib/game/formulas";
 
 export function TopBar() {
   const gold = useGameStore((s) => s.gold);
-  const currentZone = useGameStore((s) => s.currentZone);
-  const zone = getZoneForArena(currentZone);
+  const gems = useGameStore((s) => s.gems);
+  const clickDmgLevel = useGameStore((s) => s.upgrades.clickDamage);
+  const dmg = clickDamage(clickDmgLevel);
 
   const goldDisplay =
     gold >= 1_000_000
@@ -24,18 +25,14 @@ export function TopBar() {
         </span>
       </div>
 
-      <div className="flex flex-col items-center">
-        <span className="text-purple-300 text-xs font-semibold">
-          {zone.emoji} {zone.name}
-        </span>
-        <span className="text-white/60 text-xs">Arena {currentZone}</span>
+      <div className="flex items-center gap-3 text-sm">
+        <span className="text-white/40 text-xs">DMG por click</span>
+        <span className="text-orange-300 font-bold tabular-nums">{dmg}</span>
       </div>
 
       <div className="flex items-center gap-1.5">
         <span className="text-cyan-400 text-lg">💎</span>
-        <span className="text-cyan-300 font-bold text-sm tabular-nums">
-          {useGameStore((s) => s.gems)}
-        </span>
+        <span className="text-cyan-300 font-bold text-sm tabular-nums">{gems}</span>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { getZoneForArena } from "@/lib/data/zones";
 import { Enemy } from "./Enemy";
 import { UpgradeShop } from "./UpgradeShop";
 import { HeroPanel } from "./HeroPanel";
+import { SkillBar } from "./SkillBar";
 
 export function Arena() {
   const currentZone = useGameStore((s) => s.currentZone);
@@ -25,9 +26,12 @@ export function Arena() {
         <HeroPanel />
       </div>
 
-      {/* Center — enemy */}
-      <div className="flex-1 flex items-center justify-center">
-        <Enemy />
+      {/* Center — enemy + skill bar */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex items-center justify-center">
+          <Enemy />
+        </div>
+        <SkillBar />
       </div>
 
       {/* Right panel — upgrades */}

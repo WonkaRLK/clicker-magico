@@ -1,5 +1,14 @@
 export type HeroRarity = "common" | "rare" | "epic" | "legendary" | "mythic";
 
+export type HeroSkill = {
+  name: string;
+  description: string;
+  emoji: string;
+  durationSeconds: number;
+  cooldownSeconds: number;
+  effect: "dps_x3" | "gold_x2" | "click_x10" | "boss_pause";
+};
+
 export type HeroDefinition = {
   id: string;
   name: string;
@@ -9,6 +18,7 @@ export type HeroDefinition = {
   baseDps: number;
   unlockCost: number;
   levelCost: number;
+  skill?: HeroSkill;
 };
 
 export const RARITY_MULTIPLIER: Record<HeroRarity, number> = {
@@ -51,7 +61,7 @@ export const HEROES: HeroDefinition[] = [
     name: "Herminia la Erudita",
     emoji: "📚",
     rarity: "common",
-    description: "Ya había leído todos los libros antes del primer día de clases. La más brillante de su generación.",
+    description: "Ya había leído todos los libros antes del primer día de clases.",
     baseDps: 2,
     unlockCost: 80,
     levelCost: 25,
@@ -85,5 +95,59 @@ export const HEROES: HeroDefinition[] = [
     baseDps: 18,
     unlockCost: 3000,
     levelCost: 500,
+  },
+  {
+    id: "drako",
+    name: "Drako el Puro",
+    emoji: "🐍",
+    rarity: "legendary",
+    description: "De sangre pura y apellido ilustre. Cuando actúa, nadie se interpone.",
+    baseDps: 45,
+    unlockCost: 15000,
+    levelCost: 2000,
+    skill: {
+      name: "Cruciatus",
+      description: "DPS x3 durante 30 segundos.",
+      emoji: "😈",
+      durationSeconds: 30,
+      cooldownSeconds: 300,
+      effect: "dps_x3",
+    },
+  },
+  {
+    id: "minerva",
+    name: "Minerva la Transformista",
+    emoji: "🦁",
+    rarity: "legendary",
+    description: "Puede convertirse en gata a voluntad. Rigurosa, justa e implacable en combate.",
+    baseDps: 60,
+    unlockCost: 25000,
+    levelCost: 3000,
+    skill: {
+      name: "Lluvia Dorada",
+      description: "+200% oro por 60 segundos.",
+      emoji: "💛",
+      durationSeconds: 60,
+      cooldownSeconds: 480,
+      effect: "gold_x2",
+    },
+  },
+  {
+    id: "innombrable",
+    name: "El Innombrable",
+    emoji: "💀",
+    rarity: "mythic",
+    description: "No se dice su nombre. Ni siquiera en susurros. Tiene poderes que ningún mortal debería poseer.",
+    baseDps: 200,
+    unlockCost: 150000,
+    levelCost: 15000,
+    skill: {
+      name: "Tiempo Detenido",
+      description: "Pausa el timer del boss por 8 segundos.",
+      emoji: "⏸️",
+      durationSeconds: 8,
+      cooldownSeconds: 600,
+      effect: "boss_pause",
+    },
   },
 ];

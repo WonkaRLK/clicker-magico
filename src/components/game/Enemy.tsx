@@ -4,8 +4,10 @@ import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/lib/store/gameStore";
 import { DamageNumbers } from "./DamageNumbers";
+import { BossTimer } from "./BossTimer";
 import { DamageNumber } from "@/types/game";
 import { getZoneForArena } from "@/lib/data/zones";
+import { isBossZone } from "@/lib/game/formulas";
 
 const ENEMY_EMOJIS: Record<string, string[]> = {
   "Bosque Encantado": ["🐺", "🌿", "🦊", "🍄", "🌑"],
@@ -15,6 +17,14 @@ const ENEMY_EMOJIS: Record<string, string[]> = {
   "Plano Astral": ["👁️", "🌀", "✨", "🌌", "🔯"],
 };
 
+const BOSS_EMOJIS: Record<string, string> = {
+  "Bosque Encantado": "🌳",
+  "Cuevas Cristalinas": "💎",
+  "Catacumbas Profanas": "💀",
+  "Cumbre Tormentosa": "🐉",
+  "Plano Astral": "🌀",
+};
+
 let idCounter = 0;
 
 export function Enemy() {
@@ -22,6 +32,7 @@ export function Enemy() {
   const currentEnemyHp = useGameStore((s) => s.currentEnemyHp);
   const currentEnemyMaxHp = useGameStore((s) => s.currentEnemyMaxHp);
   const enemiesKilledInZone = useGameStore((s) => s.enemiesKilledInZone);
+  const inBossFight = useGameStore((s) => s.inBossFight);
   const clickEnemy = useGameStore((s) => s.clickEnemy);
 
   const [damageNums, setDamageNums] = useState<DamageNumber[]>([]);
@@ -29,8 +40,12 @@ export function Enemy() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const zone = getZoneForArena(currentZone);
+  const isBoss = isBossZone(currentZone);
   const emojis = ENEMY_EMOJIS[zone.name] ?? ["👾"];
-  const enemyEmoji = emojis[enemiesKilledInZone % emojis.length];
+  const enemyEmoji = isBoss
+    ? BOSS_EMOJIS[zone.name] ?? "👹"
+    : emojis[enemiesKilledInZone % emojis.length];
+
   const hpPercent = Math.max(0, (currentEnemyHp / currentEnemyMaxHp) * 100);
 
   const handleClick = useCallback(
@@ -41,39 +56,33 @@ export function Enemy() {
       const x = rect ? e.clientX - rect.left - 20 : 50;
       const y = rect ? e.clientY - rect.top - 20 : 50;
 
-      const num: DamageNumber = {
-        id: ++idCounter,
-        value: damage,
-        x,
-        y,
-        isCrit,
-      };
+      const num: DamageNumber = { id: ++idCounter, value: damage, x, y, isCrit };
       setDamageNums((prev) => [...prev.slice(-12), num]);
-
-      // Shake animation
       setShaking(true);
       setTimeout(() => setShaking(false), 150);
-
-      // Cleanup old numbers
-      setTimeout(() => {
-        setDamageNums((prev) => prev.filter((n) => n.id !== num.id));
-      }, 900);
+      setTimeout(() => setDamageNums((prev) => prev.filter((n) => n.id !== num.id)), 900);
     },
     [clickEnemy]
   );
 
-  const hpBarColor =
-    hpPercent > 50 ? "bg-green-500" : hpPercent > 25 ? "bg-yellow-500" : "bg-red-500";
+  const hpBarColor = isBoss
+    ? "bg-orange-500"
+    : hpPercent > 50 ? "bg-green-500" : hpPercent > 25 ? "bg-yellow-500" : "bg-red-500";
 
   return (
-    <div className="flex flex-col items-center gap-4 w-full max-w-xs mx-auto">
+    <div className="flex flex-col items-center gap-3 w-full max-w-xs mx-auto">
       {/* Zone + arena label */}
       <div className="flex flex-col items-center gap-0.5">
         <span className="text-white/80 text-sm font-semibold">
           {zone.emoji} {zone.name}
         </span>
-        <span className="text-white/40 text-xs">Arena {currentZone}</span>
+        <span className={`text-xs font-bold ${isBoss ? "text-orange-300" : "text-white/40"}`}>
+          {isBoss ? "⚔️ BOSS — Arena " : "Arena "}{currentZone}
+        </span>
       </div>
+
+      {/* Boss timer */}
+      <BossTimer />
 
       {/* HP bar */}
       <div className="w-full">
@@ -84,7 +93,7 @@ export function Enemy() {
             {Math.ceil(currentEnemyMaxHp).toLocaleString()}
           </span>
         </div>
-        <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden border border-white/10">
+        <div className={`w-full h-3 bg-white/10 rounded-full overflow-hidden border ${isBoss ? "border-orange-500/30" : "border-white/10"}`}>
           <motion.div
             className={`h-full rounded-full ${hpBarColor} transition-colors duration-300`}
             animate={{ width: `${hpPercent}%` }}
@@ -104,7 +113,7 @@ export function Enemy() {
 
         <AnimatePresence mode="wait">
           <motion.div
-            key={`${currentZone}-${enemiesKilledInZone}`}
+            key={`${currentZone}-${enemiesKilledInZone}-${inBossFight}`}
             initial={{ scale: 0, rotate: -10 }}
             animate={{ scale: 1, rotate: 0 }}
             exit={{ scale: 0, opacity: 0 }}
@@ -113,8 +122,12 @@ export function Enemy() {
             <motion.div
               animate={shaking ? { x: [-4, 4, -3, 3, 0] } : {}}
               transition={{ duration: 0.15 }}
-              className="flex items-center justify-center rounded-full bg-white/5 border-2 border-white/10 hover:bg-white/10 hover:scale-105 active:scale-95 transition-colors"
-              style={{ width: 160, height: 160, fontSize: 80 }}
+              className={`flex items-center justify-center rounded-full border-2 hover:scale-105 active:scale-95 transition-colors ${
+                isBoss
+                  ? "bg-orange-500/10 border-orange-500/40 hover:bg-orange-500/20"
+                  : "bg-white/5 border-white/10 hover:bg-white/10"
+              }`}
+              style={{ width: isBoss ? 180 : 160, height: isBoss ? 180 : 160, fontSize: isBoss ? 100 : 80 }}
             >
               {enemyEmoji}
             </motion.div>
@@ -122,9 +135,11 @@ export function Enemy() {
         </AnimatePresence>
       </div>
 
-      {/* Progress in zone */}
+      {/* Progress */}
       <div className="text-white/40 text-xs">
-        Enemigo {enemiesKilledInZone + 1} / 10 en arena {currentZone}
+        {isBoss
+          ? "¡Matá al boss antes de que se acabe el tiempo!"
+          : `Enemigo ${enemiesKilledInZone + 1} / 10 en arena ${currentZone}`}
       </div>
     </div>
   );

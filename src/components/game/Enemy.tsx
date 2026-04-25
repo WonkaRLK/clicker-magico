@@ -35,9 +35,8 @@ export function Enemy() {
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      const damage = clickEnemy();
+      const { damage, isCrit } = clickEnemy();
 
-      // Spawn damage number near click position
       const rect = containerRef.current?.getBoundingClientRect();
       const x = rect ? e.clientX - rect.left - 20 : 50;
       const y = rect ? e.clientY - rect.top - 20 : 50;
@@ -47,7 +46,7 @@ export function Enemy() {
         value: damage,
         x,
         y,
-        isCrit: false,
+        isCrit,
       };
       setDamageNums((prev) => [...prev.slice(-12), num]);
 

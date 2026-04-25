@@ -3,12 +3,14 @@
 import { useEffect } from "react";
 import { useGameStore } from "@/lib/store/gameStore";
 import { useAutoSave } from "@/hooks/useAutoSave";
+import { useGameLoop } from "@/hooks/useGameLoop";
 import { TopBar } from "@/components/layout/TopBar";
 import { Arena } from "@/components/game/Arena";
 
 export default function GamePage() {
   const loadSave = useGameStore((s) => s.loadSave);
   useAutoSave();
+  useGameLoop();
 
   useEffect(() => {
     loadSave();

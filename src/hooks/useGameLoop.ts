@@ -1,22 +1,23 @@
 import { useEffect } from "react";
 import { useGameStore } from "@/lib/store/gameStore";
 
+const TICK_MS = 50; // 20 ticks/s — suficiente para DPS pasivo y boss timer
+
 export function useGameLoop(): void {
   useEffect(() => {
-    let rafId: number;
-    let lastTime: number | null = null;
+    let lastTime = Date.now();
 
-    function tick(time: number) {
-      if (lastTime !== null) {
-        // Cap delta at 100ms to avoid huge jumps after tab switch
-        const delta = Math.min((time - lastTime) / 1000, 0.1);
+    const id = setInterval(() => {
+      const now = Date.now();
+      const delta = Math.min((now - lastTime) / 1000, 0.5);
+      lastTime = now;
+      try {
         useGameStore.getState().applyDpsTick(delta);
+      } catch (e) {
+        console.error("applyDpsTick error:", e);
       }
-      lastTime = time;
-      rafId = requestAnimationFrame(tick);
-    }
+    }, TICK_MS);
 
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
+    return () => clearInterval(id);
   }, []);
 }

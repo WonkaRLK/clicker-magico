@@ -11,15 +11,31 @@ export function Arena() {
 
   return (
     <div
-      className="flex flex-col items-center justify-between flex-1 w-full min-h-0 py-6"
+      className="flex flex-row flex-1 w-full min-h-0"
       style={{
-        background: `linear-gradient(180deg, ${zone.colorFrom} 0%, ${zone.colorTo} 100%)`,
+        background: `linear-gradient(135deg, ${zone.colorFrom} 0%, ${zone.colorTo} 100%)`,
       }}
     >
-      <div className="flex-1 flex items-center justify-center w-full">
+      {/* Left panel — upgrades */}
+      <div className="w-64 shrink-0 flex flex-col gap-2 p-3 bg-black/20 overflow-y-auto">
+        <p className="text-white/40 text-xs font-semibold uppercase tracking-widest px-1 pt-1">
+          Mejoras
+        </p>
+        <UpgradeShop />
+      </div>
+
+      {/* Center — enemy */}
+      <div className="flex-1 flex items-center justify-center">
         <Enemy />
       </div>
-      <UpgradeShop />
+
+      {/* Right panel — heroes (Fase 2) */}
+      <div className="w-64 shrink-0 flex flex-col gap-2 p-3 bg-black/20">
+        <p className="text-white/40 text-xs font-semibold uppercase tracking-widest px-1 pt-1">
+          Héroes
+        </p>
+        <div className="text-white/20 text-xs px-1">Fase 2</div>
+      </div>
     </div>
   );
 }

@@ -12,11 +12,11 @@ export function goldPerKill(zone: number, goldMultiplier = 1): number {
 }
 
 export function clickDamage(level: number): number {
-  return Math.max(1, Math.floor(1 * Math.pow(1.05, level)));
+  return Math.ceil(5 * Math.pow(1.15, level));
 }
 
 export function clickUpgradeCost(level: number): number {
-  return Math.ceil(10 * Math.pow(1.07, level));
+  return Math.ceil(15 * Math.pow(1.12, level));
 }
 
 export function eternalRunesGained(highestZone: number): number {

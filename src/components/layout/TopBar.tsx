@@ -17,7 +17,7 @@ export function TopBar() {
       : Math.floor(gold).toString();
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-5 border-b border-white/10" style={{ background: "linear-gradient(90deg, #1a0533 0%, #0d1f3c 40%, #1a0533 100%)" }}>
+    <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-8 border-b border-white/10" style={{ background: "linear-gradient(90deg, #1a0533 0%, #0d1f3c 40%, #1a0533 100%)" }}>
       <div className="flex items-center gap-1.5">
         <span className="text-yellow-400 text-lg">🪙</span>
         <span className="text-yellow-300 font-bold text-sm tabular-nums">

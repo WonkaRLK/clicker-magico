@@ -25,7 +25,7 @@ function StatPill({
   );
 }
 
-export function TopBar() {
+export function TopBar({ onOpenGacha }: { onOpenGacha: () => void }) {
   const gold = useGameStore((s) => s.gold);
   const gems = useGameStore((s) => s.gems);
   const clickDmgLevel = useGameStore((s) => s.upgrades.clickDamage);
@@ -40,12 +40,12 @@ export function TopBar() {
 
   return (
     <div
-      className="flex items-center justify-between px-8 py-8 shrink-0"
+      className="flex items-center justify-between px-8 py-4 shrink-0"
       style={{ background: "linear-gradient(90deg, #1a0533 0%, #0d1f3c 40%, #1a0533 100%)" }}
     >
       <StatPill icon="🪙" label="Oro" value={goldDisplay} color="text-yellow-300" />
 
-      {/* Center — click damage, more prominent */}
+      {/* Center — click damage */}
       <div className="flex flex-col items-center gap-1">
         <span className="text-white/30 text-[10px] uppercase tracking-widest">Daño por Click</span>
         <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10">
@@ -54,7 +54,17 @@ export function TopBar() {
         </div>
       </div>
 
-      <StatPill icon="💎" label="Gemas" value={gems} color="text-cyan-300" />
+      {/* Right — gems + gacha button */}
+      <div className="flex items-center gap-3">
+        <StatPill icon="💎" label="Gemas" value={gems} color="text-cyan-300" />
+        <button
+          onClick={onOpenGacha}
+          className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 active:scale-95 transition-all"
+        >
+          <span className="text-base">🪄</span>
+          <span className="text-purple-300 text-[10px] font-semibold uppercase tracking-widest">Invocar</span>
+        </button>
+      </div>
     </div>
   );
 }

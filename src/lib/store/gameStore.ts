@@ -8,7 +8,7 @@ import {
   heroDps, heroLevelCost,
   ENEMIES_PER_ZONE,
 } from "@/lib/game/formulas";
-import { HEROES, RARITY_MULTIPLIER } from "@/lib/data/heroes";
+import { HEROES, RARITY_MULTIPLIER, HeroDefinition, HeroRarity } from "@/lib/data/heroes";
 import { loadGame } from "./persistence";
 
 const BOSS_TIMER = 30;
@@ -46,11 +46,26 @@ export function computeTotalDps(state: GameState): number {
   }, 0);
 }
 
+function rollGachaRarity(pity: number): HeroRarity {
+  if (pity >= 100) return "mythic";
+  if (pity >= 50) return Math.random() < 0.1 ? "mythic" : "legendary";
+  const r = Math.random() * 100;
+  if (r < 0.5) return "mythic";
+  if (r < 5) return "legendary";
+  if (r < 17) return "epic";
+  if (r < 45) return "rare";
+  return "common";
+}
+
 function getBuffMult(buffs: ActiveBuff[], effect: ActiveBuff["effect"]): number {
   const now = Date.now();
   const active = buffs.filter((b) => b.effect === effect && b.expiresAt > now);
   if (active.length === 0) return 1;
-  return effect === "dps_x3" ? 3 : effect === "click_x10" ? 10 : effect === "gold_x2" ? 2 : 1;
+  if (effect === "dps_x3") return 3;
+  if (effect === "click_x10") return 10;
+  if (effect === "gold_x2") return 2;
+  if (effect === "gold_x3") return 3;
+  return 1;
 }
 
 function isBossPaused(buffs: ActiveBuff[]): boolean {
@@ -88,6 +103,7 @@ type GameStore = GameState & {
   unlockHero: (heroId: string) => void;
   levelUpHero: (heroId: string) => void;
   activateSkill: (heroId: string) => void;
+  pullGacha: (count: 1 | 10) => HeroDefinition[];
   loadSave: () => void;
 };
 
@@ -116,7 +132,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const critMult = isCrit ? critMultiplierValue(state.upgrades.critMultiplier) : 1;
     const clickBuff = getBuffMult(state.activeBuffs, "click_x10");
     const damage = Math.floor(base * critMult * clickBuff);
-    const goldMult = goldBonusMultiplier(state.upgrades.goldBonus) * getBuffMult(state.activeBuffs, "gold_x2");
+    const goldMult = goldBonusMultiplier(state.upgrades.goldBonus)
+      * getBuffMult(state.activeBuffs, "gold_x2")
+      * getBuffMult(state.activeBuffs, "gold_x3");
 
     const newHp = state.currentEnemyHp - damage;
     if (newHp > 0) {
@@ -181,7 +199,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return;
     }
 
-    const goldMult = goldBonusMultiplier(state.upgrades.goldBonus) * getBuffMult(activeBuffs, "gold_x2");
+    const goldMult = goldBonusMultiplier(state.upgrades.goldBonus)
+      * getBuffMult(activeBuffs, "gold_x2")
+      * getBuffMult(activeBuffs, "gold_x3");
 
     let damage = effectiveDps * deltaSeconds;
     let hp = state.currentEnemyHp;
@@ -285,6 +305,41 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const cost = goldBonusUpgradeCost(s.upgrades.goldBonus);
     if (s.gold < cost) return;
     set({ gold: s.gold - cost, upgrades: { ...s.upgrades, goldBonus: s.upgrades.goldBonus + 1 } });
+  },
+
+  pullGacha: (count: 1 | 10) => {
+    const state = get();
+    const cost = count === 1 ? 10 : 90;
+    if (state.gems < cost) return [];
+
+    const results: HeroDefinition[] = [];
+    let pity = state.pityCounter;
+    let totalSummons = state.totalSummons;
+    const newUnlocked = { ...state.unlockedHeroes };
+
+    for (let i = 0; i < count; i++) {
+      pity++;
+      totalSummons++;
+
+      const rarity = rollGachaRarity(pity);
+      if (rarity === "legendary" || rarity === "mythic") pity = 0;
+
+      const pool = HEROES.filter((h) => h.rarity === rarity);
+      const hero = pool.length > 0
+        ? pool[Math.floor(Math.random() * pool.length)]
+        : HEROES[0];
+
+      results.push(hero);
+
+      if (newUnlocked[hero.id]) {
+        newUnlocked[hero.id] = { ...newUnlocked[hero.id], level: newUnlocked[hero.id].level + 1 };
+      } else {
+        newUnlocked[hero.id] = { level: 1, stars: 1, fragments: 0 };
+      }
+    }
+
+    set({ gems: state.gems - cost, unlockedHeroes: newUnlocked, pityCounter: pity, totalSummons });
+    return results;
   },
 
   unlockHero: (heroId: string) => {

@@ -14,9 +14,10 @@ export function HeroPanel() {
   const state = useGameStore((s) => s);
   const totalDps = computeTotalDps(state);
 
-  // Hero N is visible if it's the first, or if the previous hero is already unlocked
+  // Show hero if: it's the first, it's already unlocked (gacha), or the previous is unlocked
   const visibleHeroes = HEROES.filter((hero, i) => {
     if (i === 0) return true;
+    if (state.unlockedHeroes[hero.id]) return true;
     const prev = HEROES[i - 1];
     return !!state.unlockedHeroes[prev.id];
   });

@@ -11,7 +11,7 @@ export type HeroState = {
 
 export type ActiveBuff = {
   id: string;
-  effect: "gold_x2" | "dps_x3" | "click_x10" | "boss_pause";
+  effect: "gold_x2" | "gold_x3" | "dps_x3" | "click_x10" | "boss_pause";
   expiresAt: number;
 };
 

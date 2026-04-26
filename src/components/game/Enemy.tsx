@@ -34,6 +34,8 @@ export function Enemy() {
   const enemiesKilledInZone = useGameStore((s) => s.enemiesKilledInZone);
   const inBossFight = useGameStore((s) => s.inBossFight);
   const clickEnemy = useGameStore((s) => s.clickEnemy);
+  const goToZone = useGameStore((s) => s.goToZone);
+  const highestZone = useGameStore((s) => s.highestZone);
 
   const [damageNums, setDamageNums] = useState<DamageNumber[]>([]);
   const [shaking, setShaking] = useState(false);
@@ -71,14 +73,30 @@ export function Enemy() {
 
   return (
     <div className="flex flex-col items-center gap-3 w-full max-w-xs mx-auto">
-      {/* Zone + arena label */}
-      <div className="flex flex-col items-center gap-0.5">
+      {/* Zone + arena label + navigation */}
+      <div className="flex flex-col items-center gap-1">
         <span className="text-white/80 text-sm font-semibold">
           {zone.emoji} {zone.name}
         </span>
-        <span className={`text-xs font-bold ${isBoss ? "text-orange-300" : "text-white/40"}`}>
-          {isBoss ? "⚔️ BOSS — Arena " : "Arena "}{currentZone}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => goToZone(currentZone - 1)}
+            disabled={currentZone <= 1}
+            className="text-white/50 hover:text-white disabled:opacity-20 transition-colors w-6 h-6 flex items-center justify-center rounded hover:bg-white/10"
+          >
+            ◀
+          </button>
+          <span className={`text-xs font-bold tabular-nums min-w-20 text-center ${isBoss ? "text-orange-300" : "text-white/40"}`}>
+            {isBoss ? "⚔️ BOSS " : ""}Arena {currentZone}
+          </span>
+          <button
+            onClick={() => goToZone(currentZone + 1)}
+            disabled={currentZone >= highestZone}
+            className="text-white/50 hover:text-white disabled:opacity-20 transition-colors w-6 h-6 flex items-center justify-center rounded hover:bg-white/10"
+          >
+            ▶
+          </button>
+        </div>
       </div>
 
       {/* Boss timer */}

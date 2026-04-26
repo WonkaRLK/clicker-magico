@@ -5,13 +5,15 @@ import {
   clickDamage, clickUpgradeCost,
   critChancePercent, critMultiplierValue, critChanceUpgradeCost, critMultUpgradeCost,
   goldBonusMultiplier, goldBonusUpgradeCost,
-  heroDps, heroLevelCost,
-  ENEMIES_PER_ZONE,
+  heroDps, heroLevelCost, heroUnlockCost,
+  talentClickMult, talentDpsMult, talentGoldMult,
+  talentStartingGold, talentGemBonus, talentBossTimerBonus, talentHeroDiscount, talentPityStart,
+  eternalRunesGained, PRESTIGE_MIN_ZONE,
+  ENEMIES_PER_ZONE, BASE_BOSS_TIMER,
 } from "@/lib/game/formulas";
 import { HEROES, RARITY_MULTIPLIER, HeroDefinition, HeroRarity } from "@/lib/data/heroes";
+import { TALENTS } from "@/lib/data/talents";
 import { loadGame } from "./persistence";
-
-const BOSS_TIMER = 30;
 
 const DEFAULT_STATE: GameState = {
   gold: 0,
@@ -29,7 +31,7 @@ const DEFAULT_STATE: GameState = {
   totalSummons: 0,
   talents: {},
   inBossFight: false,
-  bossTimer: BOSS_TIMER,
+  bossTimer: BASE_BOSS_TIMER,
   bossStartedAt: null,
   skillCooldowns: {},
   activeBuffs: [],
@@ -39,11 +41,12 @@ const DEFAULT_STATE: GameState = {
 };
 
 export function computeTotalDps(state: GameState): number {
-  return Object.entries(state.unlockedHeroes).reduce((total, [heroId, heroState]) => {
+  const base = Object.entries(state.unlockedHeroes).reduce((total, [heroId, heroState]) => {
     const def = HEROES.find((h) => h.id === heroId);
     if (!def || heroState.level === 0) return total;
     return total + heroDps(heroState.level, def.baseDps, RARITY_MULTIPLIER[def.rarity]);
   }, 0);
+  return base * talentDpsMult(state.talents.dps_power ?? 0);
 }
 
 function rollGachaRarity(pity: number): HeroRarity {
@@ -73,20 +76,22 @@ function isBossPaused(buffs: ActiveBuff[]): boolean {
   return buffs.some((b) => b.effect === "boss_pause" && b.expiresAt > now);
 }
 
-// Returns the max HP for whatever is at a given zone (boss or normal)
 function zoneMaxHp(zone: number): number {
   return isBossZone(zone) ? bossHp(zone) : enemyHp(zone);
 }
 
-// Enters a zone — sets HP and boss state
-function zoneState(zone: number): Partial<GameState> {
+function bossTimerMax(talents: Record<string, number>): number {
+  return BASE_BOSS_TIMER + talentBossTimerBonus(talents.boss_timer ?? 0);
+}
+
+function zoneState(zone: number, talents: Record<string, number> = {}): Partial<GameState> {
   const boss = isBossZone(zone);
   return {
     currentZone: zone,
     currentEnemyHp: zoneMaxHp(zone),
     currentEnemyMaxHp: zoneMaxHp(zone),
     inBossFight: boss,
-    bossTimer: boss ? BOSS_TIMER : BOSS_TIMER,
+    bossTimer: bossTimerMax(talents),
     enemiesKilledInZone: 0,
   };
 }
@@ -104,6 +109,9 @@ type GameStore = GameState & {
   levelUpHero: (heroId: string) => void;
   activateSkill: (heroId: string) => void;
   pullGacha: (count: 1 | 10) => HeroDefinition[];
+  buyTalent: (talentId: string) => void;
+  prestige: () => void;
+  goToZone: (zone: number) => void;
   loadSave: () => void;
 };
 
@@ -126,15 +134,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   clickEnemy: () => {
     const state = get();
-    const base = clickDamage(state.upgrades.clickDamage);
+    const base = clickDamage(state.upgrades.clickDamage, state.talents.click_power ?? 0);
     const critChance = critChancePercent(state.upgrades.critChance) / 100;
     const isCrit = Math.random() < critChance;
     const critMult = isCrit ? critMultiplierValue(state.upgrades.critMultiplier) : 1;
     const clickBuff = getBuffMult(state.activeBuffs, "click_x10");
     const damage = Math.floor(base * critMult * clickBuff);
+
     const goldMult = goldBonusMultiplier(state.upgrades.goldBonus)
       * getBuffMult(state.activeBuffs, "gold_x2")
-      * getBuffMult(state.activeBuffs, "gold_x3");
+      * getBuffMult(state.activeBuffs, "gold_x3")
+      * talentGoldMult(state.talents.gold_power ?? 0);
 
     const newHp = state.currentEnemyHp - damage;
     if (newHp > 0) {
@@ -142,9 +152,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return { damage, isCrit };
     }
 
-    // Kill
     const goldEarned = goldPerKill(state.currentZone, goldMult) * (state.inBossFight ? 10 : 1);
-    const gemsEarned = state.inBossFight ? Math.max(1, Math.floor(state.currentZone / 5)) : 0;
+    const baseGems = state.inBossFight ? Math.max(1, Math.floor(state.currentZone / 5)) : 0;
+    const gemsEarned = baseGems > 0 ? baseGems + talentGemBonus(state.talents.gem_bonus ?? 0) : 0;
     const newKilled = state.inBossFight ? 0 : state.enemiesKilledInZone + 1;
     const totalKilled = state.totalEnemiesKilled + 1;
 
@@ -159,7 +169,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gems: state.gems + gemsEarned,
       totalEnemiesKilled: totalKilled,
       highestZone: highest,
-      ...zoneState(nextZone),
+      ...zoneState(nextZone, state.talents),
       ...(nextZone === state.currentZone ? { enemiesKilledInZone: newKilled, currentZone: state.currentZone } : {}),
     });
 
@@ -170,17 +180,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     const now = Date.now();
 
-    // Prune expired buffs
     const activeBuffs = state.activeBuffs.filter((b) => b.expiresAt > now);
 
-    // Boss timer tick (skip if boss_pause active)
     let bossTimer = state.bossTimer;
     if (state.inBossFight && !isBossPaused(activeBuffs)) {
       bossTimer -= deltaSeconds;
       if (bossTimer <= 0) {
-        // Boss timeout — reset boss
         set({
-          bossTimer: BOSS_TIMER,
+          bossTimer: bossTimerMax(state.talents),
           currentEnemyHp: bossHp(state.currentZone),
           currentEnemyMaxHp: bossHp(state.currentZone),
           activeBuffs,
@@ -189,7 +196,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
 
-    // Passive DPS
     const totalDps = computeTotalDps(state);
     const dpsBuffMult = getBuffMult(activeBuffs, "dps_x3");
     const effectiveDps = totalDps * dpsBuffMult;
@@ -201,8 +207,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const goldMult = goldBonusMultiplier(state.upgrades.goldBonus)
       * getBuffMult(activeBuffs, "gold_x2")
-      * getBuffMult(activeBuffs, "gold_x3");
+      * getBuffMult(activeBuffs, "gold_x3")
+      * talentGoldMult(state.talents.gold_power ?? 0);
 
+    const timerMax = bossTimerMax(state.talents);
     let damage = effectiveDps * deltaSeconds;
     let hp = state.currentEnemyHp;
     let zone = state.currentZone;
@@ -219,13 +227,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       damage -= hp;
 
       if (inBoss) {
-        gems += Math.max(1, Math.floor(zone / 5));
+        const baseGems = Math.max(1, Math.floor(zone / 5));
+        gems += baseGems + talentGemBonus(state.talents.gem_bonus ?? 0);
         gold += goldPerKill(zone, goldMult) * 10;
         zone++;
         highest = Math.max(highest, zone);
         killed = 0;
         inBoss = isBossZone(zone);
-        newBossTimer = BOSS_TIMER;
+        newBossTimer = timerMax;
       } else {
         gold += goldPerKill(zone, goldMult);
         totalKilled++;
@@ -235,7 +244,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           highest = Math.max(highest, zone);
           killed = 0;
           inBoss = isBossZone(zone);
-          newBossTimer = BOSS_TIMER;
+          newBossTimer = timerMax;
         }
       }
 
@@ -307,6 +316,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ gold: s.gold - cost, upgrades: { ...s.upgrades, goldBonus: s.upgrades.goldBonus + 1 } });
   },
 
+  unlockHero: (heroId: string) => {
+    const s = get();
+    const def = HEROES.find((h) => h.id === heroId);
+    if (!def || s.unlockedHeroes[heroId]) return;
+    const discount = talentHeroDiscount(s.talents.hero_discount ?? 0);
+    const cost = heroUnlockCost(def.unlockCost, discount);
+    if (s.gold < cost) return;
+    set({
+      gold: s.gold - cost,
+      unlockedHeroes: { ...s.unlockedHeroes, [heroId]: { level: 1, stars: 1, fragments: 0 } },
+    });
+  },
+
+  levelUpHero: (heroId: string) => {
+    const s = get();
+    const def = HEROES.find((h) => h.id === heroId);
+    const heroState = s.unlockedHeroes[heroId];
+    if (!def || !heroState) return;
+    const discount = talentHeroDiscount(s.talents.hero_discount ?? 0);
+    const cost = heroLevelCost(heroState.level, def.levelCost, discount);
+    if (s.gold < cost) return;
+    set({
+      gold: s.gold - cost,
+      unlockedHeroes: { ...s.unlockedHeroes, [heroId]: { ...heroState, level: heroState.level + 1 } },
+    });
+  },
+
   pullGacha: (count: 1 | 10) => {
     const state = get();
     const cost = count === 1 ? 10 : 90;
@@ -325,12 +361,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (rarity === "legendary" || rarity === "mythic") pity = 0;
 
       const pool = HEROES.filter((h) => h.rarity === rarity);
-      const hero = pool.length > 0
-        ? pool[Math.floor(Math.random() * pool.length)]
-        : HEROES[0];
+      const hero = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : HEROES[0];
 
       results.push(hero);
-
       if (newUnlocked[hero.id]) {
         newUnlocked[hero.id] = { ...newUnlocked[hero.id], level: newUnlocked[hero.id].level + 1 };
       } else {
@@ -342,26 +375,43 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return results;
   },
 
-  unlockHero: (heroId: string) => {
+  buyTalent: (talentId: string) => {
     const s = get();
-    const def = HEROES.find((h) => h.id === heroId);
-    if (!def || s.unlockedHeroes[heroId] || s.gold < def.unlockCost) return;
+    const def = TALENTS.find((t) => t.id === talentId);
+    if (!def) return;
+    const currentLevel = s.talents[talentId] ?? 0;
+    if (currentLevel >= def.maxLevel) return;
+    const cost = def.costPerLevel[currentLevel];
+    if (s.eternalRunes < cost) return;
     set({
-      gold: s.gold - def.unlockCost,
-      unlockedHeroes: { ...s.unlockedHeroes, [heroId]: { level: 1, stars: 1, fragments: 0 } },
+      eternalRunes: s.eternalRunes - cost,
+      talents: { ...s.talents, [talentId]: currentLevel + 1 },
     });
   },
 
-  levelUpHero: (heroId: string) => {
+  prestige: () => {
     const s = get();
-    const def = HEROES.find((h) => h.id === heroId);
-    const heroState = s.unlockedHeroes[heroId];
-    if (!def || !heroState) return;
-    const cost = heroLevelCost(heroState.level, def.levelCost);
-    if (s.gold < cost) return;
+    if (s.highestZone < PRESTIGE_MIN_ZONE) return;
+    const runesEarned = eternalRunesGained(s.highestZone);
     set({
-      gold: s.gold - cost,
-      unlockedHeroes: { ...s.unlockedHeroes, [heroId]: { ...heroState, level: heroState.level + 1 } },
+      ...DEFAULT_STATE,
+      gems: s.gems,
+      eternalRunes: s.eternalRunes + runesEarned,
+      talents: s.talents,
+      totalPrestiges: s.totalPrestiges + 1,
+      highestZone: s.highestZone,
+      totalSummons: s.totalSummons,
+      gameStartedAt: s.gameStartedAt,
+      gold: talentStartingGold(s.talents.starting_gold ?? 0),
+      pityCounter: talentPityStart(s.talents.pity_start ?? 0),
+      currentEnemyHp: enemyHp(1),
+      currentEnemyMaxHp: enemyHp(1),
     });
+  },
+
+  goToZone: (zone: number) => {
+    const s = get();
+    if (zone < 1 || zone > s.highestZone) return;
+    set(zoneState(zone, s.talents));
   },
 }));

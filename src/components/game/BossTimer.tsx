@@ -2,14 +2,17 @@
 
 import { motion } from "framer-motion";
 import { useGameStore } from "@/lib/store/gameStore";
+import { BASE_BOSS_TIMER, talentBossTimerBonus } from "@/lib/game/formulas";
 
 export function BossTimer() {
   const inBossFight = useGameStore((s) => s.inBossFight);
   const bossTimer = useGameStore((s) => s.bossTimer);
+  const bossTimerTalent = useGameStore((s) => s.talents.boss_timer ?? 0);
 
   if (!inBossFight) return null;
 
-  const pct = (bossTimer / 30) * 100;
+  const maxTimer = BASE_BOSS_TIMER + talentBossTimerBonus(bossTimerTalent);
+  const pct = (bossTimer / maxTimer) * 100;
   const isUrgent = bossTimer <= 10;
 
   return (

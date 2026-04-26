@@ -15,8 +15,8 @@ export function goldPerKill(zone: number, goldMultiplier = 1): number {
 
 // === Click damage ===
 
-export function clickDamage(level: number): number {
-  return Math.ceil(5 * Math.pow(1.15, level));
+export function clickDamage(level: number, talentLevel = 0): number {
+  return Math.ceil(5 * Math.pow(1.15, level) * (1 + talentLevel * 0.15));
 }
 
 export function clickUpgradeCost(level: number): number {
@@ -26,11 +26,11 @@ export function clickUpgradeCost(level: number): number {
 // === Crit ===
 
 export function critChancePercent(level: number): number {
-  return Math.min(level * 2, 80); // 2% per level, cap 80%
+  return Math.min(level * 2, 80);
 }
 
 export function critMultiplierValue(level: number): number {
-  return 2 + level * 0.25; // 2x base, +0.25x per level
+  return 2 + level * 0.25;
 }
 
 export function critChanceUpgradeCost(level: number): number {
@@ -44,7 +44,7 @@ export function critMultUpgradeCost(level: number): number {
 // === Gold bonus ===
 
 export function goldBonusMultiplier(level: number): number {
-  return 1 + level * 0.05; // +5% per level
+  return 1 + level * 0.05;
 }
 
 export function goldBonusUpgradeCost(level: number): number {
@@ -58,14 +58,43 @@ export function heroDps(level: number, baseDps: number, rarityMult: number): num
   return baseDps * Math.pow(1.06, level - 1) * rarityMult;
 }
 
-export function heroLevelCost(level: number, baseCost: number): number {
-  return Math.ceil(baseCost * Math.pow(1.08, level));
+export function heroLevelCost(level: number, baseCost: number, discountMult = 1): number {
+  return Math.ceil(baseCost * Math.pow(1.08, level) * discountMult);
 }
+
+export function heroUnlockCost(baseCost: number, discountMult = 1): number {
+  return Math.ceil(baseCost * discountMult);
+}
+
+// === Talents ===
+
+export function talentClickMult(level: number): number { return 1 + level * 0.15; }
+export function talentDpsMult(level: number): number { return 1 + level * 0.15; }
+export function talentGoldMult(level: number): number { return 1 + level * 0.20; }
+export function talentStartingGold(level: number): number { return level * 200; }
+export function talentGemBonus(level: number): number { return level; }
+export function talentBossTimerBonus(level: number): number { return level * 5; }
+export function talentHeroDiscount(level: number): number { return Math.max(0.2, 1 - level * 0.08); }
+export function talentPityStart(level: number): number { return level * 10; }
 
 // === Prestige ===
 
+export const PRESTIGE_MIN_ZONE = 25;
+
 export function eternalRunesGained(highestZone: number): number {
-  return Math.floor(Math.sqrt(highestZone / 50));
+  return Math.floor(highestZone / 5);
+}
+
+// === Number formatting ===
+
+const SUFFIXES = ["", "k", "M", "B", "T", "q", "Q", "s", "S", "O", "N", "D"];
+
+export function fmtNum(n: number): string {
+  if (!isFinite(n) || n === 0) return "0";
+  if (n < 1000) return n.toFixed(n < 10 ? 1 : 0);
+  const exp = Math.min(Math.floor(Math.log10(n) / 3), SUFFIXES.length - 1);
+  const val = n / Math.pow(1000, exp);
+  return `${val >= 100 ? val.toFixed(1) : val.toFixed(2)}${SUFFIXES[exp]}`;
 }
 
 // === Misc ===
@@ -75,3 +104,4 @@ export function isBossZone(zone: number): boolean {
 }
 
 export const ENEMIES_PER_ZONE = 10;
+export const BASE_BOSS_TIMER = 30;

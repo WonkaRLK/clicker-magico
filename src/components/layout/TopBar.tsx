@@ -25,7 +25,7 @@ function StatPill({
   );
 }
 
-export function TopBar({ onOpenGacha }: { onOpenGacha: () => void }) {
+export function TopBar({ onOpenGacha, onOpenPrestige }: { onOpenGacha: () => void; onOpenPrestige: () => void }) {
   const gold = useGameStore((s) => s.gold);
   const gems = useGameStore((s) => s.gems);
   const clickDmgLevel = useGameStore((s) => s.upgrades.clickDamage);
@@ -54,15 +54,22 @@ export function TopBar({ onOpenGacha }: { onOpenGacha: () => void }) {
         </div>
       </div>
 
-      {/* Right — gems + gacha button */}
-      <div className="flex items-center gap-3">
+      {/* Right — gems + action buttons */}
+      <div className="flex items-center gap-2">
         <StatPill icon="💎" label="Gemas" value={gems} color="text-cyan-300" />
         <button
           onClick={onOpenGacha}
-          className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 active:scale-95 transition-all"
+          className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 active:scale-95 transition-all"
         >
           <span className="text-base">🪄</span>
           <span className="text-purple-300 text-[10px] font-semibold uppercase tracking-widest">Invocar</span>
+        </button>
+        <button
+          onClick={onOpenPrestige}
+          className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl border border-yellow-500/40 bg-yellow-500/10 hover:bg-yellow-500/20 active:scale-95 transition-all"
+        >
+          <span className="text-base">🔮</span>
+          <span className="text-yellow-300 text-[10px] font-semibold uppercase tracking-widest">Ascender</span>
         </button>
       </div>
     </div>

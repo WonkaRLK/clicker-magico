@@ -8,6 +8,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { Arena } from "@/components/game/Arena";
 import { GachaModal } from "@/components/game/GachaModal";
 import { PrestigePanel } from "@/components/game/PrestigePanel";
+import { OfflineModal } from "@/components/game/OfflineModal";
 
 export default function GamePage() {
   const loadSave = useGameStore((s) => s.loadSave);
@@ -28,6 +29,7 @@ export default function GamePage() {
       </div>
       <GachaModal isOpen={gachaOpen} onClose={() => setGachaOpen(false)} />
       <PrestigePanel isOpen={prestigeOpen} onClose={() => setPrestigeOpen(false)} />
+      <OfflineModal />
     </main>
   );
 }

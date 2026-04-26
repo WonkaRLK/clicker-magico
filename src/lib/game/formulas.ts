@@ -66,6 +66,16 @@ export function heroUnlockCost(baseCost: number, discountMult = 1): number {
   return Math.ceil(baseCost * discountMult);
 }
 
+// === Auto-click ===
+
+export function autoClickRate(level: number): number {
+  return level * 0.5; // clicks per second
+}
+
+export function autoClickCost(level: number): number {
+  return Math.ceil(200 * Math.pow(1.18, level));
+}
+
 // === Talents ===
 
 export function talentClickMult(level: number): number { return 1 + level * 0.15; }

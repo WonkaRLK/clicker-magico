@@ -6,6 +6,7 @@ import {
   critChancePercent, critMultiplierValue, critChanceUpgradeCost, critMultUpgradeCost,
   goldBonusMultiplier, goldBonusUpgradeCost,
   heroDps, heroLevelCost, heroUnlockCost,
+  autoClickRate, autoClickCost,
   talentClickMult, talentDpsMult, talentGoldMult,
   talentStartingGold, talentGemBonus, talentBossTimerBonus, talentHeroDiscount, talentPityStart,
   eternalRunesGained, PRESTIGE_MIN_ZONE,
@@ -38,6 +39,7 @@ const DEFAULT_STATE: GameState = {
   lastSavedAt: Date.now(),
   totalPrestiges: 0,
   gameStartedAt: Date.now(),
+  offlineEarnings: 0,
 };
 
 export function computeTotalDps(state: GameState): number {
@@ -105,13 +107,16 @@ type GameStore = GameState & {
   buyCritChance: () => void;
   buyCritMult: () => void;
   buyGoldBonus: () => void;
+  buyAutoClick: () => void;
   unlockHero: (heroId: string) => void;
   levelUpHero: (heroId: string) => void;
+  levelUpHeroN: (heroId: string, n: number) => void;
   activateSkill: (heroId: string) => void;
   pullGacha: (count: 1 | 10) => HeroDefinition[];
   buyTalent: (talentId: string) => void;
   prestige: () => void;
   goToZone: (zone: number) => void;
+  dismissOffline: () => void;
   loadSave: () => void;
 };
 
@@ -124,11 +129,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const zone = saved.currentZone ?? 1;
     const maxHp = zoneMaxHp(zone);
     const savedHp = saved.currentEnemyHp ?? maxHp;
+
+    // Offline earnings: up to 4h at 50% efficiency
+    const elapsed = Math.min((Date.now() - (saved.lastSavedAt ?? Date.now())) / 1000, 14400);
+    const loadedState = { ...DEFAULT_STATE, ...saved } as GameState;
+    const dps = computeTotalDps(loadedState);
+    const goldMult = goldBonusMultiplier(loadedState.upgrades.goldBonus)
+      * talentGoldMult(loadedState.talents.gold_power ?? 0);
+    const offlineEarnings = elapsed > 30 ? Math.floor(dps * elapsed * goldMult * 0.5) : 0;
+
     set({
       ...DEFAULT_STATE,
       ...saved,
       currentEnemyMaxHp: maxHp,
       currentEnemyHp: Math.min(savedHp, maxHp),
+      gold: (saved.gold ?? 0) + offlineEarnings,
+      offlineEarnings,
     });
   },
 
@@ -198,7 +214,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const totalDps = computeTotalDps(state);
     const dpsBuffMult = getBuffMult(activeBuffs, "dps_x3");
-    const effectiveDps = totalDps * dpsBuffMult;
+    // Auto-click contributes as equivalent DPS
+    const clickBuff = getBuffMult(activeBuffs, "click_x10");
+    const autoRate = autoClickRate(state.upgrades.autoClick);
+    const autoClickDps = autoRate > 0
+      ? clickDamage(state.upgrades.clickDamage, state.talents.click_power ?? 0) * autoRate * clickBuff
+      : 0;
+    const effectiveDps = totalDps * dpsBuffMult + autoClickDps;
 
     if (effectiveDps === 0) {
       set({ bossTimer, activeBuffs });
@@ -316,6 +338,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ gold: s.gold - cost, upgrades: { ...s.upgrades, goldBonus: s.upgrades.goldBonus + 1 } });
   },
 
+  buyAutoClick: () => {
+    const s = get();
+    const cost = autoClickCost(s.upgrades.autoClick);
+    if (s.gold < cost) return;
+    set({ gold: s.gold - cost, upgrades: { ...s.upgrades, autoClick: s.upgrades.autoClick + 1 } });
+  },
+
   unlockHero: (heroId: string) => {
     const s = get();
     const def = HEROES.find((h) => h.id === heroId);
@@ -341,6 +370,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gold: s.gold - cost,
       unlockedHeroes: { ...s.unlockedHeroes, [heroId]: { ...heroState, level: heroState.level + 1 } },
     });
+  },
+
+  levelUpHeroN: (heroId: string, n: number) => {
+    const s = get();
+    const def = HEROES.find((h) => h.id === heroId);
+    const heroState = s.unlockedHeroes[heroId];
+    if (!def || !heroState) return;
+    const discount = talentHeroDiscount(s.talents.hero_discount ?? 0);
+    let gold = s.gold;
+    let level = heroState.level;
+    let bought = 0;
+    for (let i = 0; i < n; i++) {
+      const cost = heroLevelCost(level, def.levelCost, discount);
+      if (gold < cost) break;
+      gold -= cost;
+      level++;
+      bought++;
+    }
+    if (bought === 0) return;
+    set({ gold, unlockedHeroes: { ...s.unlockedHeroes, [heroId]: { ...heroState, level } } });
   },
 
   pullGacha: (count: 1 | 10) => {
@@ -414,4 +463,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (zone < 1 || zone > s.highestZone) return;
     set(zoneState(zone, s.talents));
   },
+
+  dismissOffline: () => set({ offlineEarnings: 0 }),
 }));

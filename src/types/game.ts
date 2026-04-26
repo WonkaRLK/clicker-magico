@@ -66,6 +66,7 @@ export type GameState = {
   lastSavedAt: number;
   totalPrestiges: number;
   gameStartedAt: number;
+  offlineEarnings: number;
 };
 
 export type DamageNumber = {

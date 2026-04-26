@@ -101,6 +101,7 @@ function zoneState(zone: number, talents: Record<string, number> = {}): Partial<
 type ClickResult = { damage: number; isCrit: boolean };
 
 type GameStore = GameState & {
+  applyCloudSave: (data: Partial<GameState>) => void;
   clickEnemy: () => ClickResult;
   applyDpsTick: (deltaSeconds: number) => void;
   buyClickUpgrade: () => void;
@@ -122,6 +123,18 @@ type GameStore = GameState & {
 
 export const useGameStore = create<GameStore>((set, get) => ({
   ...DEFAULT_STATE,
+
+  applyCloudSave: (data: Partial<GameState>) => {
+    const zone = data.currentZone ?? 1;
+    const maxHp = zoneMaxHp(zone);
+    set({
+      ...DEFAULT_STATE,
+      ...data,
+      currentEnemyMaxHp: maxHp,
+      currentEnemyHp: Math.min(data.currentEnemyHp ?? maxHp, maxHp),
+      offlineEarnings: 0,
+    });
+  },
 
   loadSave: () => {
     const saved = loadGame();
